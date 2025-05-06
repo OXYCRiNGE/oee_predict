@@ -1,11 +1,15 @@
 services:
   api:
-    build: .
+    # build: .
+    image: oxycringe/oee_predict:latest
     container_name: oee_api
     restart: unless-stopped
+    environment:
+      NO_PROXY: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
+      no_proxy: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
     env_file: .env
     ports:
-      - "8000:8000"
+      - "9007:8000"
     volumes:
       - ./dataset:/app/dataset
       - ./model:/app/model
@@ -15,9 +19,13 @@ services:
       - scheduler
 
   scheduler:
-    build: .
+    # build: .
+    image: oxycringe/oee_predict:latest
     container_name: oee_scheduler
     restart: unless-stopped
+    environment:
+      NO_PROXY: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
+      no_proxy: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
     env_file: .env
     volumes:
       - ./dataset:/app/dataset
