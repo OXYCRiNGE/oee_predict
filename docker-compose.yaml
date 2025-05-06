@@ -1,0 +1,33 @@
+services:
+  api:
+    build: .
+    container_name: oee_api
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./dataset:/app/dataset
+      - ./model:/app/model
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - scheduler
+
+  scheduler:
+    build: .
+    container_name: oee_scheduler
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./dataset:/app/dataset
+      - ./model:/app/model
+      - ./logs:/app/logs
+      - ./data:/app/data
+    command: ["python", "main.py"]
+
+volumes:
+  dataset:
+  model:
+  logs:
+  data:

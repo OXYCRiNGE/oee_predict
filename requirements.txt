@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pandas
+joblib
+catboost
+scikit-learn
+requests
+beautifulsoup4
+tqdm
+python-dotenv
+schedule
+openpyxl
+holidays
