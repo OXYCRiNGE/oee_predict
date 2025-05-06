@@ -29,7 +29,7 @@ def load_credentials():
 def authorize(login, password):
     """Авторизация на сервере и возвращение сессии и URL."""
     session = requests.Session()
-    login_url = "https://10.90.0.241/Winnum/servlets/WinnumLogin"
+    login_url = "http://10.90.0.241/Winnum/servlets/WinnumLogin"
     payload = {
         'uid': login,
         'pwd': password,
@@ -38,7 +38,7 @@ def authorize(login, password):
     login_response = session.post(login_url, data=payload, verify=False)
     if login_response.ok:
         logging.info("Авторизация выполнена успешно")
-        url = "https://10.90.0.241/Winnum/views/pages/app/agw.jsp"
+        url = "http://10.90.0.241/Winnum/views/pages/app/agw.jsp"
         return session, url
     else:
         raise ConnectionError("Ошибка авторизации")
