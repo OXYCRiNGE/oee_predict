@@ -24,7 +24,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
-def preprocess_data(data, target='OEE', exog_columns=None, lag_start=1, lag_end=60, test_size=0.2):
+def preprocess_data(data, target='OEE', exog_columns=None, lag_start=1, lag_end=60, test_size=0.9):
     data = pd.DataFrame(data.copy())
     data['Дата'] = pd.to_datetime(data['Дата']).dt.normalize()
     data.drop(['Объект'], axis=1, inplace=True, errors='ignore')
@@ -118,7 +118,14 @@ def train_model(X_train, y_train, model_file=Path('model/best_pipeline_model.pkl
     }
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ("model", CatBoostRegressor(**bp_model, verbose=0, random_seed=42, has_time=True))
+        ("model", CatBoostRegressor(
+            **bp_model, 
+            verbose=0, 
+            random_seed=42, 
+            has_time=True,
+            thread_count=-1
+            )
+        )
     ])
     pipeline.fit(X_train, y_train)
     save_model(pipeline, model_file)
