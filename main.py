@@ -40,8 +40,8 @@ def job_train():
         logging.error(f"Ошибка при обучении: {str(e)}")
 
 # Планирование задач
-schedule.every().day.at("00:30").do(job_extract_data)
-schedule.every().day.at("01:00").do(job_train)
+schedule.every().day.at("00:30", "Europe/Moscow").do(job_extract_data)
+schedule.every().day.at("01:00", "Europe/Moscow").do(job_train)
 
 if __name__ == "__main__":
     logging.info("Планировщик запущен")

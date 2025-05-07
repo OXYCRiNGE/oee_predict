@@ -22,14 +22,15 @@ def load_credentials():
     load_dotenv()
     login = os.getenv('USER_LOGIN')
     password = os.getenv('USER_PASSWORD')
+    winnum_url = os.getenv('WINNUM_URL')
     if not login or not password:
         raise ValueError("Логин или пароль не найдены в .env файле")
-    return login, password
+    return login, password, winnum_url
 
-def authorize(login, password):
+def authorize(login, password, winnum_url):
     """Авторизация на сервере и возвращение сессии и URL."""
     session = requests.Session()
-    login_url = "http://10.90.0.241/Winnum/servlets/WinnumLogin"
+    login_url = f"{winnum_url}/Winnum/servlets/WinnumLogin"
     payload = {
         'uid': login,
         'pwd': password,
@@ -38,7 +39,7 @@ def authorize(login, password):
     login_response = session.post(login_url, data=payload, verify=False)
     if login_response.ok:
         logging.info("Авторизация выполнена успешно")
-        url = "http://10.90.0.241/Winnum/views/pages/app/agw.jsp"
+        url = f"{winnum_url}/Winnum/views/pages/app/agw.jsp"
         return session, url
     else:
         raise ConnectionError("Ошибка авторизации")
@@ -77,8 +78,8 @@ def process_signal_data(df_uuid, df_tags, start_date='2021-01-01', end_date=None
     os.makedirs(dataset_dir, exist_ok=True)
     output_path = os.path.join(dataset_dir, output_file)
 
-    login, password = load_credentials()
-    session, url = authorize(login, password)
+    login, password, winnum_url = load_credentials()
+    session, url = authorize(login, password, winnum_url)
 
     try:
         all_data = []
