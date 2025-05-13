@@ -64,7 +64,7 @@ schedule.every().day.at("01:00", "Europe/Moscow").do(job_train_and_forecast)
 
 if __name__ == "__main__":
     logging.info("Планировщик запущен")
-    # job_extract_data()
+    job_extract_data()
     job_train_and_forecast()
     while True:
         schedule.run_pending()

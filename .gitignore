@@ -2,3 +2,4 @@
 /__pycache__
 /logs
 /catboost_info
+/postgres_data

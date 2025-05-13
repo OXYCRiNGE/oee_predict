@@ -1,12 +1,30 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: oee_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: oee_predict
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   api:
     # build: .
-    image: oxycringe/oee_predict:latest
+    image: oxycringe/oee_predict:2.0
     container_name: oee_api
     restart: unless-stopped
     environment:
-      NO_PROXY: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
-      no_proxy: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
+      NO_PROXY: localhost,127.0.0.1,10.20.211.2,iiot-istok.istok.ad,10.90.0.241,postgres
+      no_proxy: localhost,127.0.0.1,10.20.211.2,iiot-istok.istok.ad,10.90.0.241,postgres
     env_file: .env
     ports:
       - "9007:8000"
@@ -16,16 +34,19 @@ services:
       - ./logs:/app/logs
       - ./data:/app/data
     depends_on:
-      - scheduler
+      postgres:
+        condition: service_healthy
+      scheduler:
+        condition: service_started
 
   scheduler:
     # build: .
-    image: oxycringe/oee_predict:latest
+    image: oxycringe/oee_predict:2.0
     container_name: oee_scheduler
     restart: unless-stopped
     environment:
-      NO_PROXY: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
-      no_proxy: localhost, 127.0.0.1, 10.20.211.2, iiot-istok.istok.ad, 10.90.0.241
+      NO_PROXY: localhost,127.0.0.1,10.20.211.2,iiot-istok.istok.ad,10.90.0.241,postgres
+      no_proxy: localhost,127.0.0.1,10.20.211.2,iiot-istok.istok.ad,10.90.0.241,postgres
     env_file: .env
     volumes:
       - ./dataset:/app/dataset
@@ -33,9 +54,13 @@ services:
       - ./logs:/app/logs
       - ./data:/app/data
     command: ["python", "main.py"]
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   dataset:
   model:
   logs:
   data:
+  postgres_data:

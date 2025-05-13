@@ -3,6 +3,7 @@ FROM python:3.11-slim
 # Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем рабочую директорию
@@ -16,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Создаём директории
-RUN mkdir -p /app/dataset /app/model /app/logs /app/data
+RUN mkdir -p /app/dataset /app/model /app/logs /app/data /app/backup
 
 # Открываем порт для FastAPI
 EXPOSE 8000
