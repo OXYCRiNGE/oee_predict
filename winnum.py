@@ -121,6 +121,6 @@ def process_signal_data(df_uuid, df_tags, start_date='2021-01-01', end_date=None
                 df[col] = None
         df = df[tag_columns]
         df.to_excel(output_path, index=False)
-        logging.info(f"Данные сохранены в {output_path}")
+        logging.info(f"Данные сохранены")
     finally:
         session.close()

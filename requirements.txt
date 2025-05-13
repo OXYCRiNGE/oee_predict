@@ -11,3 +11,5 @@ python-dotenv
 schedule
 openpyxl
 holidays
+sqlalchemy
+psycopg[binary,pool]

@@ -6,6 +6,8 @@ import numpy as np
 import os
 import joblib
 from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error, root_mean_squared_error
+from scipy.interpolate import interp1d
 from catboost import CatBoostRegressor
 import logging
 from dotenv import load_dotenv
@@ -24,11 +26,11 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
-def preprocess_data(data, target='OEE', exog_columns=None, lag_start=1, lag_end=60, test_size=0.9):
+def preprocess_data(data, target='OEE', exog_columns=None, test_size=0.2):
     data = pd.DataFrame(data.copy())
-    data['Дата'] = pd.to_datetime(data['Дата']).dt.normalize()
-    data.drop(['Объект'], axis=1, inplace=True, errors='ignore')
     data.fillna(0, inplace=True)
+    data.drop(['Объект'], axis=1, inplace=True, errors='ignore')
+    data['Дата'] = pd.to_datetime(data['Дата']).dt.normalize()
     data.set_index('Дата', inplace=True)
     data = data.groupby('Дата').sum()
 
@@ -49,59 +51,61 @@ def preprocess_data(data, target='OEE', exog_columns=None, lag_start=1, lag_end=
     data.drop(exclude_columns, axis=1, inplace=True, errors="ignore")
 
     # Удаление столбцов с большим количеством NaN или нулей
-    threshold = len(data) * 0.2
-    columns_0_more_20_per = [
+    threshold = len(data) * 0.7
+    threshold_columns = [
         col for col in data.columns
         if data[col].isna().sum() > threshold or (data[col] == 0).sum() > threshold
     ]
-    data = data.drop(columns=columns_0_more_20_per)
+    data = data.drop(columns=threshold_columns)
 
     # Применение PowerTransformer
     pt = PowerTransformer(method='yeo-johnson')
     data[data.drop(["OEE"], axis=1).columns] = pt.fit_transform(data.drop(["OEE"], axis=1))
 
-    # Создание лагов для целевой переменной
-    for i in range(lag_start, lag_end + 1):
-        data[f"lag_{i}"] = data[target].shift(i)
+# Лаговые признаки
+    lag_steps = [1, 7, 14, 30, 60]
+    for lag in lag_steps:
+        data[f"{target}_lag_{lag}"] = data[target].shift(lag)
+        if exog_columns is not None:
+            for col in exog_columns:
+                data[f"{col}_lag_{lag}"] = data[col].shift(lag)
+        else:
+            for col in data.drop(target, axis=1).columns.to_list():
+                data[f"{col}_lag_{lag}"] = data[col].shift(lag)
 
-    # Создание лагов для экзогенных переменных
-    if exog_columns is not None:
-        for col in exog_columns:
-            for i in range(lag_start, lag_end + 1):
-                data[f'{col}_lag_{i}'] = data[col].shift(i)
-    else:
-        for col in data.drop(target, axis=1).columns.to_list():
-            for i in range(lag_start, lag_end + 1):
-                data[f'{col}_lag_{i}'] = data[col].shift(i)
+    # Скользящие средние и стандартное отклонение
+    window_sizes = [7, 14, 30, 60]
+    for window in window_sizes:
+        data[f"{target}_mean_{window}"] = data[target].rolling(window=window).mean()
+        data[f"{target}_std_{window}"] = data[target].rolling(window=window).std()
+        if exog_columns is not None:
+            for col in exog_columns:
+                data[f"{col}_mean_{window}"] = data[col].rolling(window=window).mean()
+                data[f"{col}_std_{window}"] = data[col].rolling(window=window).std()
 
-    data = data.dropna()
-
-    # Добавление временных признаков
+    # Временные признаки
     data["day_of_week"] = data.index.dayofweek
     data["month"] = data.index.month
-    data["date"] = data.index.day.astype(int)
+    data["quarter"] = data.index.quarter
+    data["day_of_year"] = data.index.dayofyear
+    data["week_of_year"] = data.index.isocalendar().week
+    data["is_weekend"] = data["day_of_week"].isin([5, 6]).astype(int)
+
+    # Праздники
     ru_holidays = holidays.RU(years=data.index.year.unique())
     data["holiday"] = data.index.map(lambda x: 1 if x in ru_holidays else 0)
 
-    # Добавление скользящих средних
-    data["rolling_mean_7"] = data[target].rolling(7).mean()
-    data["rolling_mean_14"] = data[target].rolling(14).mean()
-    data["rolling_mean_30"] = data[target].rolling(30).mean()
-    data["rolling_mean_60"] = data[target].rolling(60).mean()
+    # Удаляем NaN
     data.dropna(inplace=True)
 
-    # Вычисление средних по дате
-    size = int(len(data) * (1 - test_size))
-    date_means = data.groupby('date')[target].mean()
-    data['date_average'] = data['date'].map(date_means)
-
     # Разделение на train/test
+    size = int(len(data) * (1 - test_size))
     X_train = data.iloc[:size].drop(target, axis=1)
     X_test = data.iloc[size:].drop(target, axis=1)
     y_train = data[target].iloc[:size]
     y_test = data[target].iloc[size:]
 
-    return X_train, X_test, y_train, y_test
+    return X_train, X_test, y_train, y_test,
 
 def save_model(model, model_file):
     os.makedirs(os.path.dirname(model_file), exist_ok=True)
@@ -109,12 +113,12 @@ def save_model(model, model_file):
         joblib.dump(model, f)
     logging.info(f"Модель сохранена в {model_file}")
 
-def train_model(X_train, y_train, model_file=Path('model/best_pipeline_model.pkl')):
+def train_model(X_train, X_test, y_train, y_test, model_file=Path('model/best_pipeline_model.pkl')):
     bp_model = {
         'learning_rate': 0.05,
-        'l2_leaf_reg': 7,
+        'l2_leaf_reg': 5,
         'iterations': 300,
-        'depth': 2
+        'depth': 4
     }
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
@@ -128,6 +132,19 @@ def train_model(X_train, y_train, model_file=Path('model/best_pipeline_model.pkl
         )
     ])
     pipeline.fit(X_train, y_train)
+            
+    # Вычисление метрик на тестовых данных
+
+    y_pred = pipeline.predict(X_test)
+    mae = mean_absolute_error(y_test, y_pred)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = root_mean_squared_error(y_test, y_pred)
+    mape = mean_absolute_percentage_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    # Логирование метрик
+    logging.info(f"Метрики модели на тестовых данных: MAE={mae:.2f} MSE={mse:.2f} RMSE={rmse:.2f} MAPE={mape:.2%} R2={r2:.2%}")
+    
     save_model(pipeline, model_file)
     return pipeline
 
