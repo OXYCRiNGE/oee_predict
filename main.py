@@ -9,6 +9,9 @@ from model import preprocess_data, train_model, forecast_future
 from logging_config import setup_logging
 from database import create_database, init_db_engine, create_tables, save_forecast_to_db
 from pathlib import Path
+import pytz
+
+TZ = pytz.timezone('Europe/Moscow')
 
 # Настройка логирования
 setup_logging()
@@ -59,8 +62,8 @@ except Exception as e:
     exit(1)
 
 # Планирование задач
-schedule.every().day.at("00:30", "Europe/Moscow").do(job_extract_data)
-schedule.every().day.at("01:00", "Europe/Moscow").do(job_train_and_forecast)
+schedule.every().day.at("00:30", TZ).do(job_extract_data)
+schedule.every().day.at("01:00", TZ).do(job_train_and_forecast)
 
 if __name__ == "__main__":
     logging.info("Планировщик запущен")
