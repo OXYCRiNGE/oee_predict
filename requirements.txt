@@ -13,3 +13,4 @@ openpyxl
 holidays
 sqlalchemy
 psycopg[binary,pool]
+pytz
