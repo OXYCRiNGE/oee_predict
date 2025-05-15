@@ -1,25 +1,21 @@
 import logging
 from datetime import datetime
 import pandas as pd
-from dotenv import load_dotenv
-import os
 from sqlalchemy import create_engine, inspect, text, MetaData, Table, Column, Integer, Date, Float, DateTime, ForeignKey
 from sqlalchemy.exc import OperationalError
 from psycopg import Connection
 from logging_config import setup_logging
-from pathlib import Path
+import env
 import time
 
 # Настройка логирования
 setup_logging()
 
-# Конфигурация
-load_dotenv()
-DB_HOST = os.getenv('DB_HOST', 'postgres')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
-DB_NAME = os.getenv('DB_NAME', 'oee_predict')
+DB_HOST = env.DB_HOST
+DB_PORT = env.DB_PORT
+DB_USER = env.DB_USER
+DB_PASSWORD = env.DB_PASSWORD
+DB_NAME = env.DB_NAME
 
 # Создание строки подключения
 CONNECTION_STRING = f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

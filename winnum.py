@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
-from dotenv import load_dotenv
 import os
 import urllib3
 import pandas as pd
@@ -10,6 +9,7 @@ import warnings
 from tqdm import tqdm
 import logging
 from logging_config import setup_logging
+import env
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
@@ -19,10 +19,9 @@ setup_logging()
 
 def load_credentials():
     """Загружает логин и пароль из .env файла."""
-    load_dotenv()
-    login = os.getenv('USER_LOGIN')
-    password = os.getenv('USER_PASSWORD')
-    winnum_url = os.getenv('WINNUM_URL')
+    login = env.USER_LOGIN
+    password = env.USER_PASSWORD
+    winnum_url = env.WINNUM_URL
     if not login or not password:
         raise ValueError("Логин или пароль не найдены в .env файле")
     return login, password, winnum_url

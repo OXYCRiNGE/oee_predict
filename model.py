@@ -2,24 +2,20 @@ import warnings
 import pandas as pd
 from sklearn.preprocessing import PowerTransformer, StandardScaler
 import holidays
-import numpy as np
 import os
 import joblib
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_absolute_percentage_error, root_mean_squared_error
-from scipy.interpolate import interp1d
 from catboost import CatBoostRegressor
 import logging
-from dotenv import load_dotenv
+import env
 from logging_config import setup_logging
 from pathlib import Path
 
 # Настройка логирования
 setup_logging()
 
-# Конфигурация
-load_dotenv()
-DATA_FILE = Path(os.getenv('DATA_FILE', 'dataset/signal_data_full.xlsx'))
+DATA_FILE = env.DATA_FILE
 
 # Игнорирование предупреждений
 warnings.filterwarnings("ignore", category=FutureWarning)

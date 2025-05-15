@@ -7,7 +7,7 @@ scikit-learn
 requests
 beautifulsoup4
 tqdm
-python-dotenv
+environs
 schedule
 openpyxl
 holidays

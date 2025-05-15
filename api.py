@@ -22,20 +22,17 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
-import os
-from dotenv import load_dotenv
+import env
 from logging_config import setup_logging
 from database import init_db_engine, get_forecast_from_db
 import logging
-from pathlib import Path
 
 # Настройка логирования
 setup_logging()
 
-# Конфигурация
-load_dotenv()
-DATA_FILE = Path(os.getenv('DATA_FILE', 'dataset/signal_data_full.xlsx'))
-MODEL_FILE = Path(os.getenv('MODEL_FILE', 'model/best_pipeline_model.pkl'))
+
+DATA_FILE = env.DATA_FILE
+MODEL_FILE = env.MODEL_FILE
 
 # Lifespan-обработчик
 @asynccontextmanager
@@ -70,7 +67,7 @@ async def get_forecast(days: int = Query(60, ge=1, le=60)):
     logging.info(f"Получен запрос: days={days}")
     try:
         forecast_df = get_forecast_from_db(days)
-        # logging.info("Прогноз взят из таблицы current_forecast")
+        logging.info("Прогноз взят из таблицы current_forecast")
         forecast_json = forecast_df.to_dict(orient='records')
         logging.info("Запрос успешно обработан")
         return {"forecast": forecast_json}

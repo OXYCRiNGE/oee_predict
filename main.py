@@ -2,8 +2,7 @@ import schedule
 import time
 import pandas as pd
 import logging
-from dotenv import load_dotenv
-import os
+import env
 from winnum import process_signal_data
 from model import preprocess_data, train_model, forecast_future
 from logging_config import setup_logging
@@ -11,15 +10,16 @@ from database import create_database, init_db_engine, create_tables, save_foreca
 from pathlib import Path
 import pytz
 
-TZ = pytz.timezone('Europe/Moscow')
-
 # Настройка логирования
 setup_logging()
 
-# Конфигурация
-load_dotenv()
-DATA_FILE = Path(os.getenv('DATA_FILE', 'dataset/signal_data_full.xlsx'))
-MODEL_FILE = Path(os.getenv('MODEL_FILE', 'model/main_pipeline_model.pkl'))
+
+DATA_FILE = env.DATA_FILE
+MODEL_FILE = env.MODEL_FILE
+START_WITH_DOWNLOAD = env.START_WITH_DOWNLOAD
+
+TZ = pytz.timezone('Europe/Moscow')
+
 
 def job_extract_data():
     try:
@@ -62,13 +62,14 @@ except Exception as e:
     exit(1)
 
 # Планирование задач
-schedule.every().day.at("00:30", TZ).do(job_extract_data)
-schedule.every().day.at("01:00", TZ).do(job_train_and_forecast)
+schedule.every().day.at("03:30", "Europe/Moscow").do(job_extract_data)
+schedule.every().day.at("04:00", "Europe/Moscow").do(job_train_and_forecast)
 
 if __name__ == "__main__":
     logging.info("Планировщик запущен")
-    job_extract_data()
-    job_train_and_forecast()
+    if START_WITH_DOWNLOAD:
+        job_extract_data()
+        job_train_and_forecast()
     while True:
         schedule.run_pending()
         time.sleep(60)
