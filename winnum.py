@@ -17,6 +17,10 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 # Настройка логирования
 setup_logging()
 
+WINNUM_CONNECT_TIMEOUT = 60
+WINNUM_READ_TIMEOUT = 60
+WINNUM_RETRIES = 5
+
 def load_credentials():
     """Загружает логин и пароль из .env файла."""
     login = env.USER_LOGIN
@@ -35,7 +39,16 @@ def authorize(login, password, winnum_url):
         'pwd': password,
         'smbt': 'Войти'
     }
-    login_response = session.post(login_url, data=payload, verify=False)
+    try:
+        login_response = session.post(
+            login_url,
+            data=payload,
+            verify=False,
+            timeout=(WINNUM_CONNECT_TIMEOUT, WINNUM_READ_TIMEOUT) 
+        )
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Ошибка авторизации Winnum: {e}") 
+        raise ConnectionError("Ошибка авторизации: " + str(e)) 
     if login_response.ok:
         logging.info("Авторизация выполнена успешно")
         url = f"{winnum_url}/Winnum/views/pages/app/agw.jsp"
@@ -44,15 +57,33 @@ def authorize(login, password, winnum_url):
         raise ConnectionError("Ошибка авторизации")
 
 def execute_api(session, url, params, method='GET'):
-    """Выполнение API-запроса с исправлением URL."""
     req = requests.Request(method, url, params=params)
     prepared = req.prepare()
     prepared.url = prepared.url.replace('%3A', ':')
-    r = session.request(method=prepared.method, url=prepared.url, cookies=session.cookies, verify=False)
-    return r
+    last_exception = None
+    for attempt in range(WINNUM_RETRIES):
+        try:
+            r = session.request(
+                method=prepared.method,
+                url=prepared.url,
+                cookies=session.cookies,
+                verify=False,
+                timeout=(WINNUM_CONNECT_TIMEOUT, WINNUM_READ_TIMEOUT) 
+            )
+            return r
+        except requests.exceptions.RequestException as e:
+            last_exception = e
+            logging.error(f"[Winnum] Ошибка запроса ({attempt+1}/{WINNUM_RETRIES}): {e}") 
+            if attempt + 1 < WINNUM_RETRIES:
+                logging.info(f"[Winnum] Повтор запроса через 5 секунд...") 
+                import time
+                time.sleep(5)
+    logging.error(f"[Winnum] Провал всех попыток обращения к API: {last_exception}") 
+    return None 
 
 def get_items(response, parser='html.parser', tag='item', show_xml=False):
-    """Извлечение элементов из ответа API."""
+    if response is None: 
+        return []        
     soup = BeautifulSoup(response.content, parser)
     if show_xml:
         xml = soup.prettify()
@@ -102,6 +133,9 @@ def process_signal_data(df_uuid, df_tags, start_date='2021-01-01', end_date=None
                     'mode': 'yes'
                 }
                 r = execute_api(session, url, params)
+                if r is None:  
+                    logging.warning(f"[Winnum] Пропущен сигнал для uuid={uuid}, tag={tag_id} ({tag_name}) из-за ошибки запроса") 
+                    continue 
                 items = get_items(r, show_xml=False)
 
                 for item in items:
