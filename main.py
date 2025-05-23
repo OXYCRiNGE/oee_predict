@@ -35,7 +35,7 @@ def job_train_and_forecast():
     try:
         logging.info("Начало обучения модели и генерации прогноза")
         df = pd.read_excel(DATA_FILE, engine='openpyxl')
-        X_train, X_test, y_train, y_test = preprocess_data(df, exog_columns=['OEE'])
+        X_train, X_test, y_train, y_test = preprocess_data(df)
         
         # Обучение модели
         model = train_model(X_train, X_test, y_train, y_test, model_file=MODEL_FILE)
