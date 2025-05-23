@@ -22,7 +22,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
-def preprocess_data(data, target='OEE', exog_columns=None, test_size=0.2):
+def preprocess_data(data, target='OEE', test_size=0.2):
     data = pd.DataFrame(data.copy())
     data.fillna(0, inplace=True)
     data.drop(['Объект'], axis=1, inplace=True, errors='ignore')
@@ -58,7 +58,12 @@ def preprocess_data(data, target='OEE', exog_columns=None, test_size=0.2):
     pt = PowerTransformer(method='yeo-johnson')
     data[data.drop(["OEE"], axis=1).columns] = pt.fit_transform(data.drop(["OEE"], axis=1))
 
-# Лаговые признаки
+    # Выбор эгзогенных параметров
+    correlation_matrix_oee = data.corr()
+    exog_vars_oee = correlation_matrix_oee["OEE"].drop("OEE").abs()
+    exog_columns = exog_vars_oee[exog_vars_oee > 0.2].index.tolist()
+    
+    # Лаговые признаки
     lag_steps = [1, 7, 14, 30, 60]
     for lag in lag_steps:
         data[f"{target}_lag_{lag}"] = data[target].shift(lag)
